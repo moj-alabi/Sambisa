@@ -1,0 +1,146 @@
+Got it — the “**compose build stack failed**” error in Portainer is usually caused by **one or more of these issues**:
+
+---
+
+### 🔍 **Common Culprits**
+Here’s a checklist to quickly identify what might be causing it:
+
+#### 1. ✅ **Dockerfile missing or incorrect paths**
+- If `build: .` or `build: ./nginx` is used, make sure:
+  - There’s a `Dockerfile` in the root directory (for `ctfd`)
+  - There’s a `Dockerfile` inside `./nginx`
+
+✅ **Fix**: Double-check that those folders/files exist where expected.
+
+#### 2. 🚫 **Invalid YAML or Docker syntax**
+- Portainer is strict with indentation, tabs vs. spaces, and reserved fields.
+- `deploy:` and `resources:` fields don’t work **outside Docker Swarm**, which Portainer may not support in standalone mode.
+
+✅ **Fix**: Remove the `deploy:` section if you're not in Swarm mode.
+
+#### 3. ❌ **Incorrect network config in non-swarm**
+- `overlay` networks like `frp-containers` only work in Swarm.
+
+✅ **Fix**: Change `frp-containers` to `bridge` instead.
+
+---
+
+### ✅ **Clean Working Version for Portainer (non-Swarm)**
+
+Here’s a simplified and **corrected** version of your Docker Compose file that should work in Portainer standalone mode:
+
+```yaml
+version: '3.8'
+
+services:
+  ctfd-nginx:
+    build: ./nginx
+    container_name: ctfd-nginx
+    restart: always
+    user: root
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - default
+      - internal
+    depends_on:
+      - ctfd
+
+  ctfd:
+    build: .
+    container_name: ctfd
+    restart: always
+    user: root
+    environment:
+      UPLOAD_FOLDER: /var/uploads
+      DATABASE_URL: mysql+pymysql://root:ctfd@db/ctfd
+      REDIS_URL: redis://cache:6379
+      WORKERS: 1
+      LOG_FOLDER: /var/log/CTFd
+      ACCESS_LOG: "-"
+      ERROR_LOG: "-"
+      REVERSE_PROXY: "true"
+    volumes:
+      - .data/CTFd/logs:/var/log/CTFd
+      - .data/CTFd/uploads:/var/uploads
+      - .:/opt/CTFd:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - default
+      - internal
+      - frp
+
+  db:
+    image: mariadb:10.4
+    container_name: ctfd-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ctfd
+      MYSQL_USER: ctfd
+      MYSQL_PASSWORD: ctfd
+    volumes:
+      - .data/mysql:/var/lib/mysql
+    command: [
+      "mysqld",
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_unicode_ci",
+      "--wait_timeout=28800",
+      "--log-warnings=0"
+    ]
+    networks:
+      - internal
+
+  cache:
+    image: redis:4
+    container_name: ctfd-cache
+    restart: always
+    volumes:
+      - .data/redis:/data
+    networks:
+      - internal
+
+  frpc:
+    image: glzjin/frp:latest
+    container_name: frpc
+    restart: always
+    volumes:
+      - ./frpc:/conf/
+    entrypoint:
+      - /usr/local/bin/frpc
+      - -c
+      - /conf/frpc.ini
+    networks:
+      frp:
+        ipv4_address: 172.1.0.3
+      frp-containers:
+
+networks:
+  default:
+  internal:
+    internal: true
+  frp:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.1.0.0/16
+  frp-containers:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.2.0.0/16
+```
+
+---
+
+### 🔄 Next Steps
+
+- Try deploying this via Portainer again.
+- If you still get the build error:
+  1. Go to **Portainer > Stacks > Logs** to see the exact error message.
+  2. Paste the error here and I’ll help debug it fast.
+
+---
+
+Want me to send you a zipped folder structure with the proper `Dockerfile`s and sample challenge integration too?

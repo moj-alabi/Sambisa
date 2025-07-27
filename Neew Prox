@@ -1,3 +1,6 @@
 Wazuh: lXn1F1mp+AtRGKT5E1neFdrka7Z1iD1h
 
 Graylog: IjELBBPQPzO967Jl
+
+Initial configuration is accessible at 0.0.0.0:9000, with username 'admin' and password 'wweKzTNvmQ'.
+Try clicking on http://admin:wweKzTNvmQ@0.0.0.0:9000
